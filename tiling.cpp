@@ -87,18 +87,18 @@ Tiles computeRectangularTiles1D(int totalWidth, int blkWidth, int blkHalfTimeste
  * at the bottom left.
  *
  * ^
- * |
- * | t        blkWidth
- * |    |<----------------->| 
- * +----------------------------------------------------------------------+
- * | 1H | 2H | 2H | 2H | 2H | 3H | 3H | 3H | 3H | 4H | 4H | 4H | 4H | ... |
- * | 1E | 1E | 2E | 2E | 2E | 2E | 3E | 3E | 3E | 3E | 4E | 4E | 4E | ... |
- * | 1H | 1H | 2H | 2H | 2H | 2H | 3H | 3H | 3H | 3H | 4H | 4H | 4H | ... |
- * | 1E | 1E | 1E | 2E | 2E | 2E | 2E | 3E | 3E | 3E | 3E | 4E | 4E | ... |
- * | 1H | 1H | 1H | 2H | 2H | 2H | 2H | 3H | 3H | 3H | 3H | 4H | 4H | ... |
- * | 1E | 1E | 1E | 1E | 2E | 2E | 2E | 2E | 3E | 3E | 3E | 3E | 4E | ... |
- * +---------------------------------------------------------------------->
- *                                                                     x
+ * | t      blkWidth
+ * |       |--------|
+ * | AAAAAABBBBBBBBBBCCCCCCCCCCDDDDDDDDDDEEEEEEEEEEFFFFFFFFFFGGGGGGGGGGHHHH
+ * | AAAAAAABBBBBBBBBBCCCCCCCCCCDDDDDDDDDDEEEEEEEEEEFFFFFFFFFFGGGGGGGGGGHHH
+ * | AAAAAAABBBBBBBBBBCCCCCCCCCCDDDDDDDDDDEEEEEEEEEEFFFFFFFFFFGGGGGGGGGGHHH
+ * | AAAAAAAABBBBBBBBBBCCCCCCCCCCDDDDDDDDDDEEEEEEEEEEFFFFFFFFFFGGGGGGGGGGHH
+ * | AAAAAAAABBBBBBBBBBCCCCCCCCCCDDDDDDDDDDEEEEEEEEEEFFFFFFFFFFGGGGGGGGGGHH
+ * | AAAAAAAAABBBBBBBBBBCCCCCCCCCCDDDDDDDDDDEEEEEEEEEEFFFFFFFFFFGGGGGGGGGGH
+ * | AAAAAAAAABBBBBBBBBBCCCCCCCCCCDDDDDDDDDDEEEEEEEEEEFFFFFFFFFFGGGGGGGGGGH
+ * | AAAAAAAAAABBBBBBBBBBCCCCCCCCCCDDDDDDDDDDEEEEEEEEEEFFFFFFFFFFGGGGGGGGGG
+ * |------------------------------------------------------------------------>
+ *                                                                       x
  * (See Figure 8 (a) in the paper for a colored version)
  *
  * Thus, the 2D simulation space-time can be broken into parallelogram
@@ -237,16 +237,18 @@ Tiles computeParallelogramTiles1D(
  * at the bottom left.
  *
  * ^
- * |
- * | t         blkTimesteps + blkWidth - 1
- * |              |<----------------->| 
- * +----------------------------------------------------------------------+
- * | 1H | 1H | 1H | 2H | 2H | 2H | 2H | 2H | 2H | 3H | 3H | 3H | 4H | ... |
- * | 1E | 1E | 1E | 2E | 2E | 2E | 2E | 2E | 3E | 3E | 3E | 3E | 4E | ... |
- * | 1H | 1H | 1H | 1H | 2H | 2H | 2H | 2H | 3H | 3H | 3H | 3H | 3H | ... |
- * | 1E | 1E | 1E | 1E | 2E | 2E | 2E | 3E | 3E | 3E | 3E | 3E | 3E | ... |
- * +---------------------------------------------------------------------->
- *                                                                     x
+ * | t      blkTimesteps + blkWidth - 1
+ * |           |---------------|
+ * | AAAAAAAAAAEEEEEEEEEEEEEEEEEBBBBBBBBBBFFFFFFFFFFFFFFFFFCCCCCCCCCCGGGGGG
+ * | AAAAAAAAAAAEEEEEEEEEEEEEEEEBBBBBBBBBBBFFFFFFFFFFFFFFFFCCCCCCCCCCCGGGGG
+ * | AAAAAAAAAAAEEEEEEEEEEEEEEEBBBBBBBBBBBBFFFFFFFFFFFFFFFCCCCCCCCCCCCGGGGG
+ * | AAAAAAAAAAAAEEEEEEEEEEEEEEBBBBBBBBBBBBBFFFFFFFFFFFFFFCCCCCCCCCCCCCGGGG
+ * | AAAAAAAAAAAAEEEEEEEEEEEEEBBBBBBBBBBBBBBFFFFFFFFFFFFFCCCCCCCCCCCCCCGGGG
+ * | AAAAAAAAAAAAAEEEEEEEEEEEEBBBBBBBBBBBBBBBFFFFFFFFFFFFCCCCCCCCCCCCCCCGGG
+ * | AAAAAAAAAAAAAEEEEEEEEEEEBBBBBBBBBBBBBBBBFFFFFFFFFFFCCCCCCCCCCCCCCCCGGG
+ * | AAAAAAAAAAAAAAEEEEEEEEEEBBBBBBBBBBBBBBBBBFFFFFFFFFFCCCCCCCCCCCCCCCCCGG
+ * |------------------------------------------------------------------------>
+ *                                                                       x
  * (See Figure 8 (b) in the paper for a colored version)
  *
  * Thus, the 2D simulation space-time can be broken into diamond tiles.
