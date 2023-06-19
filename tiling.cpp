@@ -253,10 +253,10 @@ Tiles computeParallelogramTiles1D(
  *
  * Thus, the 2D simulation space-time can be broken into diamond tiles.
  * Two types of diamond tiles exist: if a tile becomes shorter over time,
- * it's called a "mountain" tile, such as tile 2 in the diagram. If a
+ * it's called a "mountain" tile, such as tile A or B in the diagram. If a
  * tile becomes longer over time, it's called a "valley" tile, such as
- * tile 3. Both tiles always exist in a interleaved manner, i.e. a valley
- * between two mountains.
+ * tile E or F. Both tiles always exist in a interleaved manner, i.e. a
+ * valley between two mountains.
  *
  * Each tile is the minimum unit of work and many timesteps are calculated
  * at once. There's NO data dependency within all mountains or all valleys,
@@ -589,8 +589,8 @@ void traceRectangularTilesExecution(void)
 
 void visualizeParallelogramTiles1D(void)
 {
-	Tiles tilesX = computeParallelogramTiles1D(100, 10, 8);
-	visualizeTiles1D(tilesX, 100, 8);
+	Tiles tilesX = computeParallelogramTiles1D(70, 10, 8);
+	visualizeTiles1D(tilesX, 70, 8);
 }
 
 void traceParallelogramTilesExecution(void)
@@ -604,8 +604,8 @@ void traceParallelogramTilesExecution(void)
 
 void visualizeDiamondTiles1D(void)
 {
-	Tiles tilesX = computeDiamondTiles1D(100, 10, 8);
-	visualizeTiles1D(tilesX, 100, 8);
+	Tiles tilesX = computeDiamondTiles1D(70, 10, 8);
+	visualizeTiles1D(tilesX, 70, 8);
 }
 
 void traceDiamondTilesExecution(void)
@@ -619,8 +619,8 @@ void traceDiamondTilesExecution(void)
 
 int main(void)
 {
-	visualizeParallelogramTiles1D();
-
+	// visualizeParallelogramTiles1D();
+	visualizeDiamondTiles1D();
 
 	// traceRectangularTilesExecution()
 	// traceParallelogramTilesExecution();	
