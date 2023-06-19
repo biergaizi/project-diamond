@@ -48,6 +48,13 @@ parallelogram tiling and diamond tilling, implemented according to:
 
 For details, read the comments in tiling.cpp.
 
+openEMS
+------------
+
+This is part of my simulation speed improvement effort for the openEMS
+project, which is currently ongoing. I kindly request any reader to avoid
+attempting to do the same for now to avoid duplicated work.
+
 License
 ------------
 
