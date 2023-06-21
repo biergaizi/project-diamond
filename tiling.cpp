@@ -662,10 +662,10 @@ std::vector<std::vector<Tiles3D>> combineTilesTo3D(
 						}
 						if (!omit) {
 							tilesPerThreadPerPhase[phase][assignedThread].push_back(r);
-							if (parallelAxis == 'Z') {
-								assignedThread = (assignedThread + 1) % numThreads;
-							}
 						}
+					}
+					if (parallelAxis == 'Z') {
+						assignedThread = (assignedThread + 1) % numThreads;
 					}
 				}
 				if (parallelAxis == 'Y') {
