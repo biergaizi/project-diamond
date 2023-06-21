@@ -23,8 +23,13 @@ Tiles computeRectangularTiles1D(int totalWidth, int blkWidth, int blkHalfTimeste
 	/* at the beginning, divide the axis into several tiles */
 	int numBlocks    = totalWidth / blkWidth;
 	int numRemainder = totalWidth % blkWidth;
+
+	/* For leftover cells, we allocate another block */
+	if (numRemainder > 0) {
+		numBlocks += 1;
+	}
 	
-	blockList.resize(numBlocks + numRemainder);
+	blockList.resize(numBlocks);
 
 	for (size_t i = 0; i < blockList.size(); i++) {
 		Block block;
@@ -66,6 +71,70 @@ Tiles computeRectangularTiles1D(int totalWidth, int blkWidth, int blkHalfTimeste
 	return tiles;
 }
 
+std::vector<std::vector<Tiles3D>> computeRectangularTiles3D(
+	int totalWidth[3],
+	int blkWidth[3],
+	int numThreads
+)
+{
+	Tiles tilesX = computeRectangularTiles1D(totalWidth[0], blkWidth[0], 2);
+	Tiles tilesY = computeRectangularTiles1D(totalWidth[1], blkWidth[1], 2);
+	Tiles tilesZ = computeRectangularTiles1D(totalWidth[2], blkWidth[2], 2);
+
+	std::vector<std::vector<Tiles3D>> tilesPerThreadPerPhase;
+	tilesPerThreadPerPhase.resize(1); /* only 1 phase */
+	tilesPerThreadPerPhase[0].resize(numThreads);
+
+	int assignedthread = 0;
+	int blkHalfTimesteps = 2;
+
+	for (int phaseX = 0; phaseX < tilesX.phases; phaseX++) {
+		for (int phaseY = 0; phaseY < tilesY.phases; phaseY++) {
+			for (int phaseZ = 0; phaseZ < tilesZ.phases; phaseZ++) {
+				for (int x = 0; x < tilesX.array[phaseX].size(); x++) {
+					for (int y = 0; y < tilesY.array[phaseY].size(); y++) {
+						for (int z = 0; z < tilesZ.array[phaseZ].size(); z++) {
+							for (int t = 0; t < blkHalfTimesteps; t += 2) {
+								Range3D r;
+
+								r.voltageStart[0] = tilesX.array[phaseX][x][t].first;
+								r.voltageStart[1] = tilesY.array[phaseY][y][t].first;
+								r.voltageStart[2] = tilesZ.array[phaseZ][z][t].first;
+
+								r.voltageStop[0]  = tilesX.array[phaseX][x][t].second;
+								r.voltageStop[1]  = tilesY.array[phaseY][y][t].second;
+								r.voltageStop[2]  = tilesZ.array[phaseZ][z][t].second;
+
+								r.currentStart[0] = tilesX.array[phaseX][x][t + 1].first;
+								r.currentStart[1] = tilesY.array[phaseY][y][t + 1].first;
+								r.currentStart[2] = tilesZ.array[phaseZ][z][t + 1].first;
+
+								r.currentStop[0]  = tilesX.array[phaseX][x][t + 1].second;
+								r.currentStop[1]  = tilesY.array[phaseY][y][t + 1].second;
+								r.currentStop[2]  = tilesZ.array[phaseZ][z][t + 1].second;
+
+								bool omit = false;
+								for (int n = 0; n < 3; n++) {
+									if (r.voltageStart[n] == -1 && r.voltageStop[n] == -1) {
+										omit = true;
+									}
+									if (r.currentStart[n] == -1 && r.currentStop[n] == -1) {
+										omit = true;
+									}
+								}
+								if (!omit) {
+									tilesPerThreadPerPhase[0][assignedthread].push_back(r);
+									assignedthread = (assignedthread + 1) % numThreads;
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	return tilesPerThreadPerPhase;
+}
 
 /*
  * Calculate parallelogram tiles in 1D space + 1D time, according to:
@@ -518,6 +587,120 @@ Tiles3D combineTilesTo3D(Tiles tilesX, Tiles tilesY, Tiles tilesZ, int blkHalfTi
 	return tiles;
 }
 
+std::vector<std::vector<Tiles3D>> combineTilesTo3D(
+	Tiles tilesX, Tiles tilesY, Tiles tilesZ,
+	int blkHalfTimesteps,
+	int numThreads
+)
+{
+	/*
+	 * First, we need to find one dimension that is parallelizable
+	 * (i.e. uses diamond tiling).
+	 */
+	int parallelAxis = -1;
+	if (tilesZ.type == TILES_DIAMOND) {
+		parallelAxis = 'Z';
+	}
+	else if (tilesY.type == TILES_DIAMOND) {
+		parallelAxis = 'Y';
+	}
+	else if (tilesX.type == TILES_DIAMOND) {
+		parallelAxis = 'X';
+	}
+
+	if (parallelAxis == -1 && numThreads != 1) {
+		fprintf(stderr, "no parallelization possible.\n");
+		std::exit(1);
+	}
+
+	int totalPhases = tilesX.phases * tilesY.phases * tilesZ.phases;
+	std::vector<std::vector<Tiles3D>> tilesPerThreadPerPhase;
+	tilesPerThreadPerPhase.resize(totalPhases);
+
+	for (int phase = 0; phase < totalPhases; phase++) {
+		tilesPerThreadPerPhase[phase].resize(numThreads);
+	}
+
+	int phaseXYZ[3] = {0, 0, 0};  /* X, Y, Z */
+	int assignedThread = 0;
+	for (int phase = 0; phase < totalPhases; phase++) {
+		fprintf(stderr, "phase(%d, %d, %d)\n", phaseXYZ[0], phaseXYZ[1], phaseXYZ[2]);
+		int phaseX = phaseXYZ[0];
+		int phaseY = phaseXYZ[1];
+		int phaseZ = phaseXYZ[2];
+
+		for (int x = 0; x < tilesX.array[phaseX].size(); x++) {
+			for (int y = 0; y < tilesY.array[phaseY].size(); y++) {
+				for (int z = 0; z < tilesZ.array[phaseZ].size(); z++) {
+					for (int t = 0; t < blkHalfTimesteps; t += 2) {
+						Range3D r;
+
+						r.voltageStart[0] = tilesX.array[phaseX][x][t].first;
+						r.voltageStart[1] = tilesY.array[phaseY][y][t].first;
+						r.voltageStart[2] = tilesZ.array[phaseZ][z][t].first;
+
+						r.voltageStop[0]  = tilesX.array[phaseX][x][t].second;
+						r.voltageStop[1]  = tilesY.array[phaseY][y][t].second;
+						r.voltageStop[2]  = tilesZ.array[phaseZ][z][t].second;
+
+						r.currentStart[0] = tilesX.array[phaseX][x][t + 1].first;
+						r.currentStart[1] = tilesY.array[phaseY][y][t + 1].first;
+						r.currentStart[2] = tilesZ.array[phaseZ][z][t + 1].first;
+
+						r.currentStop[0]  = tilesX.array[phaseX][x][t + 1].second;
+						r.currentStop[1]  = tilesY.array[phaseY][y][t + 1].second;
+						r.currentStop[2]  = tilesZ.array[phaseZ][z][t + 1].second;
+
+						bool omit = false;
+						for (int n = 0; n < 3; n++) {
+							if (r.voltageStart[n] == -1 && r.voltageStop[n] == -1) {
+								omit = true;
+							}
+							if (r.currentStart[n] == -1 && r.currentStop[n] == -1) {
+								omit = true;
+							}
+						}
+						if (!omit) {
+							tilesPerThreadPerPhase[phase][assignedThread].push_back(r);
+							if (parallelAxis == 'Z') {
+								assignedThread = (assignedThread + 1) % numThreads;
+							}
+						}
+					}
+				}
+				if (parallelAxis == 'Y') {
+					assignedThread = (assignedThread + 1) % numThreads;
+				}
+			}
+			if (parallelAxis == 'X') {
+				assignedThread = (assignedThread + 1) % numThreads;
+			}
+		}
+
+		/*
+		 * Carry propagation for the (phaseX, phaseY, phaseZ) counter.
+		 * This is equivelant to three nested for loops.
+		 */
+		phaseXYZ[2]++;
+
+		if (phaseXYZ[2] > tilesZ.phases - 1) {
+			phaseXYZ[2] = 0;
+			phaseXYZ[1]++;
+		}
+		if (phaseXYZ[1] > tilesY.phases - 1) {
+			phaseXYZ[1] = 0;
+			phaseXYZ[0]++;
+		}
+		if (phaseXYZ[0] > tilesX.phases - 1) {
+			/*
+			 * No need to do anything if phaseX overflows, since the outer
+			 * for loop will terminate when it reaches totalPhases.
+			 */
+		}
+	}
+
+	return tilesPerThreadPerPhase;
+}
 
 void visualizeTiles1D(Tiles tiles, int totalWidth, int blkTimesteps)
 {
@@ -561,8 +744,7 @@ void visualizeTiles1D(Tiles tiles, int totalWidth, int blkTimesteps)
 
 void traceTiles3D(Tiles3D tileList)
 {
-	for (auto& tile : tileList)
-	{
+	for (auto& tile : tileList) {
 		fprintf(stderr, "UpdateVoltages (%d, %d) (%d, %d) (%d, %d)\n",
 			tile.voltageStart[0], tile.voltageStop[0],
 			tile.voltageStart[1], tile.voltageStop[1],
@@ -585,6 +767,54 @@ void traceRectangularTilesExecution(void)
 	Tiles tilesZ = computeRectangularTiles1D(100, 10, 2);
 	Tiles3D tiles = combineTilesTo3D(tilesX, tilesY, tilesZ, 2);
 	traceTiles3D(tiles);
+}
+
+void traceMultithreadedRectangularTilesExecution(void)
+{
+	int totalSizes[3] = {20, 20, 20};
+	int blkSizes[3] = {4, 4, 20};
+	auto tilesPerThreadPerPhase = computeRectangularTiles3D(totalSizes, blkSizes, 4);
+
+	int longestTileCountPerThread = 0;
+	for (auto& tile : tilesPerThreadPerPhase[0]) {  /* hardcoded 1 phase */
+		if (tile.size() > longestTileCountPerThread) {
+			longestTileCountPerThread = tile.size();
+		}
+	}
+
+	for (int tile = 0; tile < longestTileCountPerThread; tile++) {
+		for (int thread = 0; thread < tilesPerThreadPerPhase[0].size(); thread++) {
+			auto tilesWithinThread = tilesPerThreadPerPhase[0][thread];
+			if (tile > tilesWithinThread.size() - 1) {
+				continue;
+			}
+
+			auto tileObj = tilesWithinThread[tile];
+			fprintf(stderr, "UpdateVoltages (%02d, %02d) (%02d, %02d)", //(%02d, %02d)",
+				tileObj.voltageStart[0], tileObj.voltageStop[0],
+				tileObj.voltageStart[1], tileObj.voltageStop[1],
+				tileObj.voltageStart[2], tileObj.voltageStop[2]
+			);
+			fprintf(stderr, "    ");
+		}
+		fprintf(stderr, "\n");
+
+		for (int thread = 0; thread < tilesPerThreadPerPhase[0].size(); thread++) {
+			auto tilesWithinThread = tilesPerThreadPerPhase[0][thread];
+			if (tile > tilesWithinThread.size() - 1) {
+				continue;
+			}
+
+			auto tileObj = tilesWithinThread[tile];
+			fprintf(stderr, "UpdateCurrents (%02d, %02d) (%02d, %02d)", // (%02d, %02d)",
+				tileObj.currentStart[0], tileObj.currentStop[0],
+				tileObj.currentStart[1], tileObj.currentStop[1],
+				tileObj.currentStart[2], tileObj.currentStop[2]
+			);
+			fprintf(stderr, "    ");
+		}
+		fprintf(stderr, "\n");
+	}
 }
 
 void visualizeParallelogramTiles1D(void)
@@ -619,8 +849,15 @@ void traceDiamondTilesExecution(void)
 
 int main(void)
 {
+	// Tiles tilesX = computeDiamondTiles1D(100, 10, 2);
+	// Tiles tilesY = computeDiamondTiles1D(100, 10, 2);
+	// Tiles tilesZ = computeParallelogramTiles1D(100, 10, 2);
+	// auto retval = combineTilesTo3D(tilesX, tilesY, tilesZ, 2, 32);
+
+	traceMultithreadedRectangularTilesExecution();
+
 	// visualizeParallelogramTiles1D();
-	visualizeDiamondTiles1D();
+	// visualizeDiamondTiles1D();
 
 	// traceRectangularTilesExecution()
 	// traceParallelogramTilesExecution();	
