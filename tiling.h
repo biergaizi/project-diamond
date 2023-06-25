@@ -59,6 +59,7 @@ struct Range3D
 };
 typedef std::vector<Range3D>	Tiles3D;
 
+Tiles computeRectangularTilesNoDeps1D(int totalWidth, int blkWidth, int blkHalfTimesteps);
 Tiles computeRectangularTiles1D(int totalWidth, int blkWidth, int blkHalfTimesteps);
 std::vector<std::vector<Tiles3D>> computeRectangularTiles3D(
 	int totalWidth[3],

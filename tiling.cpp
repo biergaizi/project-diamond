@@ -5,6 +5,91 @@
  * Split the simulation domain into regular rectangular tiles in 1D space.
  * No special time-skewing technique is used. This serves only as a reference
  * implementation.
+ *
+ * This implementation uses identical rectangular tile shapes and does not
+ * consider dependencies between electric and magnetic field updates. Thus,
+ * all electric (even) steps must be executed before all magnetic (old) steps.
+ *
+ * It's the caller's responsibility to check if the magnetic field tile is
+ * at the edge of the simulation domain.
+ */
+Tiles computeRectangularTilesNoDeps1D(int totalWidth, int blkWidth, int blkHalfTimesteps)
+{
+	if (blkHalfTimesteps != 2)
+	{
+		/*
+		 * One timestep contains two half timesteps, one electric, one
+		 * magnetic. Multi-timestep techniques (time skewing) are not
+		 * supported.
+		 */
+		std::exit(1);
+	}
+
+	std::vector<Block> blockList;
+
+	/* at the beginning, divide the axis into several tiles */
+	int numBlocks    = totalWidth / blkWidth;
+	int numRemainder = totalWidth % blkWidth;
+
+	/* For leftover cells, we allocate another block */
+	if (numRemainder > 0) {
+		numBlocks += 1;
+	}
+
+	blockList.resize(numBlocks);
+
+	for (size_t i = 0; i < blockList.size(); i++) {
+		Block block;
+
+		for (int t = 0; t < 2; t++) {
+			if (t % 2 == 0) {
+				/* electric field range */
+				Range startStop = Range(
+					i * blkWidth,
+					i * blkWidth + blkWidth - 1
+				);
+				if (startStop.second > totalWidth - 1) {
+					startStop.second = totalWidth - 1;
+				}
+				block.push_back(startStop);
+			}
+			else {
+				/* magnetic field range */
+				Range startStop = Range(
+					i * blkWidth,
+					i * blkWidth + blkWidth - 1
+				);
+				if (startStop.second > totalWidth - 1) {
+					startStop.second = totalWidth - 1;
+				}
+				block.push_back(startStop);
+			}
+		}
+
+		blockList[i] = block;
+	}
+
+	/* TILES_RECTANGULAR has one phase. */
+	Tiles tiles;
+	tiles.type = TILES_RECTANGULAR;
+	tiles.phases = 1;
+	tiles.array.resize(tiles.phases);
+	tiles.array[0] = blockList;
+
+	return tiles;
+}
+
+/*
+ * Split the simulation domain into regular rectangular tiles in 1D space.
+ * No special time-skewing technique is used. This serves only as a reference
+ * implementation.
+ *
+ * This implementation considers dependencies between electric and magnetic
+ * field, the magnetic field update range is 1 unit small than electric
+ * field's range, thus, it's safe to update electric and magnetic fields in
+ * a single step. However, it doesn't consider the problem of dependencies
+ * at a tile's edge, so it's unsafe for multi-threading due to lack of
+ * synchronization.
  */
 Tiles computeRectangularTiles1D(int totalWidth, int blkWidth, int blkHalfTimesteps)
 {
@@ -28,7 +113,7 @@ Tiles computeRectangularTiles1D(int totalWidth, int blkWidth, int blkHalfTimeste
 	if (numRemainder > 0) {
 		numBlocks += 1;
 	}
-	
+
 	blockList.resize(numBlocks);
 
 	for (size_t i = 0; i < blockList.size(); i++) {
@@ -52,7 +137,7 @@ Tiles computeRectangularTiles1D(int totalWidth, int blkWidth, int blkHalfTimeste
 
 				if (startStop.first < 0) {
 					startStop.first = 0;
-				}		
+				}
 
 				block.push_back(startStop);
 			}
@@ -77,13 +162,16 @@ std::vector<std::vector<Tiles3D>> computeRectangularTiles3D(
 	int numThreads
 )
 {
-	Tiles tilesX = computeRectangularTiles1D(totalWidth[0], blkWidth[0], 2);
-	Tiles tilesY = computeRectangularTiles1D(totalWidth[1], blkWidth[1], 2);
-	Tiles tilesZ = computeRectangularTiles1D(totalWidth[2], blkWidth[2], 2);
+	Tiles tilesX = computeRectangularTilesNoDeps1D(totalWidth[0], blkWidth[0], 2);
+	Tiles tilesY = computeRectangularTilesNoDeps1D(totalWidth[1], blkWidth[1], 2);
+	Tiles tilesZ = computeRectangularTilesNoDeps1D(totalWidth[2], blkWidth[2], 2);
 
-	std::vector<std::vector<Tiles3D>> tilesPerThreadPerPhase;
-	tilesPerThreadPerPhase.resize(1); /* only 1 phase */
-	tilesPerThreadPerPhase[0].resize(numThreads);
+	std::vector<std::vector<Tiles3D>> tilesPerPhasePerThread;
+	tilesPerPhasePerThread.resize(numThreads);
+	for (auto& tilesPerPhase : tilesPerPhasePerThread) {
+		/* only one phase */
+		tilesPerPhase.resize(1);
+	}
 
 	int assignedthread = 0;
 	int blkHalfTimesteps = 2;
@@ -123,7 +211,7 @@ std::vector<std::vector<Tiles3D>> computeRectangularTiles3D(
 									}
 								}
 								if (!omit) {
-									tilesPerThreadPerPhase[0][assignedthread].push_back(r);
+									tilesPerPhasePerThread[assignedthread][0].push_back(r);
 									assignedthread = (assignedthread + 1) % numThreads;
 								}
 							}
@@ -133,7 +221,7 @@ std::vector<std::vector<Tiles3D>> computeRectangularTiles3D(
 			}
 		}
 	}
-	return tilesPerThreadPerPhase;
+	return tilesPerPhasePerThread;
 }
 
 /*
@@ -614,11 +702,11 @@ std::vector<std::vector<Tiles3D>> combineTilesTo3D(
 	}
 
 	int totalPhases = tilesX.phases * tilesY.phases * tilesZ.phases;
-	std::vector<std::vector<Tiles3D>> tilesPerThreadPerPhase;
-	tilesPerThreadPerPhase.resize(totalPhases);
+	std::vector<std::vector<Tiles3D>> tilesPerPhasePerThread;
+	tilesPerPhasePerThread.resize(numThreads);
 
-	for (int phase = 0; phase < totalPhases; phase++) {
-		tilesPerThreadPerPhase[phase].resize(numThreads);
+	for (auto& tilesPerPhase : tilesPerPhasePerThread) {
+		tilesPerPhase.resize(totalPhases);
 	}
 
 	int phaseXYZ[3] = {0, 0, 0};  /* X, Y, Z */
@@ -661,7 +749,7 @@ std::vector<std::vector<Tiles3D>> combineTilesTo3D(
 							}
 						}
 						if (!omit) {
-							tilesPerThreadPerPhase[phase][assignedThread].push_back(r);
+							tilesPerPhasePerThread[assignedThread][phase].push_back(r);
 						}
 					}
 					if (parallelAxis == 'Z') {
@@ -699,7 +787,7 @@ std::vector<std::vector<Tiles3D>> combineTilesTo3D(
 		}
 	}
 
-	return tilesPerThreadPerPhase;
+	return tilesPerPhasePerThread;
 }
 
 void visualizeTiles1D(Tiles tiles, int totalWidth, int blkTimesteps)
@@ -771,26 +859,27 @@ void traceRectangularTilesExecution(void)
 
 void traceMultithreadedRectangularTilesExecution(void)
 {
-	int totalSizes[3] = {20, 20, 20};
-	int blkSizes[3] = {4, 4, 20};
-	auto tilesPerThreadPerPhase = computeRectangularTiles3D(totalSizes, blkSizes, 4);
+	int totalSizes[3] = {147, 335, 77};
+	int blkSizes[3] = {147, 335, 77};
+	int numThreads = 1;
+	auto tilesPerPhasePerThread = computeRectangularTiles3D(totalSizes, blkSizes, numThreads);
 
 	int longestTileCountPerThread = 0;
-	for (auto& tile : tilesPerThreadPerPhase[0]) {  /* hardcoded 1 phase */
-		if (tile.size() > longestTileCountPerThread) {
-			longestTileCountPerThread = tile.size();
+	for (auto& tilesPerPhase : tilesPerPhasePerThread) {
+		if (tilesPerPhase[0].size() > longestTileCountPerThread) {
+			longestTileCountPerThread = tilesPerPhase[0].size();
 		}
 	}
 
 	for (int tile = 0; tile < longestTileCountPerThread; tile++) {
-		for (int thread = 0; thread < tilesPerThreadPerPhase[0].size(); thread++) {
-			auto tilesWithinThread = tilesPerThreadPerPhase[0][thread];
+		for (int thread = 0; thread < numThreads; thread++) {
+			auto tilesWithinThread = tilesPerPhasePerThread[thread][0];
 			if (tile > tilesWithinThread.size() - 1) {
 				continue;
 			}
 
 			auto tileObj = tilesWithinThread[tile];
-			fprintf(stderr, "UpdateVoltages (%02d, %02d) (%02d, %02d)", //(%02d, %02d)",
+			fprintf(stderr, "UpdateVoltages (%02d, %02d) (%02d, %02d) (%02d, %02d)",
 				tileObj.voltageStart[0], tileObj.voltageStop[0],
 				tileObj.voltageStart[1], tileObj.voltageStop[1],
 				tileObj.voltageStart[2], tileObj.voltageStop[2]
@@ -799,14 +888,14 @@ void traceMultithreadedRectangularTilesExecution(void)
 		}
 		fprintf(stderr, "\n");
 
-		for (int thread = 0; thread < tilesPerThreadPerPhase[0].size(); thread++) {
-			auto tilesWithinThread = tilesPerThreadPerPhase[0][thread];
+		for (int thread = 0; thread < numThreads; thread++) {
+			auto tilesWithinThread = tilesPerPhasePerThread[thread][0];
 			if (tile > tilesWithinThread.size() - 1) {
 				continue;
 			}
 
 			auto tileObj = tilesWithinThread[tile];
-			fprintf(stderr, "UpdateCurrents (%02d, %02d) (%02d, %02d)", // (%02d, %02d)",
+			fprintf(stderr, "UpdateCurrents (%02d, %02d) (%02d, %02d) (%02d, %02d)",
 				tileObj.currentStart[0], tileObj.currentStop[0],
 				tileObj.currentStart[1], tileObj.currentStop[1],
 				tileObj.currentStart[2], tileObj.currentStop[2]
@@ -854,13 +943,13 @@ int main(void)
 	// Tiles tilesZ = computeParallelogramTiles1D(100, 10, 2);
 	// auto retval = combineTilesTo3D(tilesX, tilesY, tilesZ, 2, 32);
 
-	traceMultithreadedRectangularTilesExecution();
+	// traceMultithreadedRectangularTilesExecution();
 
 	// visualizeParallelogramTiles1D();
 	// visualizeDiamondTiles1D();
 
 	// traceRectangularTilesExecution()
-	// traceParallelogramTilesExecution();	
+	// traceParallelogramTilesExecution();
 	// traceDiamondTilesExecution();
 
 	return 0;

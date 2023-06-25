@@ -199,9 +199,9 @@ void testRectangularTiling(
 					//);
 					UpdateCurrents(
 						curr, volt, iv, ii,
-						tile.currentStart[0], tile.currentStop[0],
-						tile.currentStart[1], tile.currentStop[1],
-						tile.currentStart[2], tile.currentStop[2]
+						tile.currentStart[0], (tile.currentStop[0] > numLines[0] - 2) ? numLines[0] - 2 : tile.currentStop[0],
+						tile.currentStart[1], (tile.currentStop[1] > numLines[1] - 2) ? numLines[1] - 2 : tile.currentStop[1],
+						tile.currentStart[2], (tile.currentStop[2] > numLines[2] - 2) ? numLines[2] - 2 : tile.currentStop[2]
 					);
 
 				}
@@ -223,12 +223,12 @@ void testTrapezoidalTiling(
 {
 	fprintf(stderr, "testing trapezoidal tiling with %d timesteps tiling.\n", timesteps);
 
-	Tiles tilesX = computeParallelogramTiles1D(numLines[0], blkSizes[0], 4);
-	Tiles tilesY = computeParallelogramTiles1D(numLines[1], blkSizes[1], 4);
-	Tiles tilesZ = computeParallelogramTiles1D(numLines[2], blkSizes[2], 4);
-	Tiles3D tiles = combineTilesTo3D(tilesX, tilesY, tilesZ, 4, 1)[0][0];
+	Tiles tilesX = computeParallelogramTiles1D(numLines[0], blkSizes[0], 60 * 2);
+	Tiles tilesY = computeParallelogramTiles1D(numLines[1], blkSizes[1], 60 * 2);
+	Tiles tilesZ = computeParallelogramTiles1D(numLines[2], blkSizes[2], 60 * 2);
+	Tiles3D tiles = combineTilesTo3D(tilesX, tilesY, tilesZ, 60 * 2, 1)[0][0];
 
-	for (int t = 0; t < 30; t++) {
+	for (int t = 0; t < 1; t++) {
 		for (auto& tile : tiles) {
 			//fprintf(stderr, "UpdateVoltages (%d, %d) (%d, %d) (%d, %d)\n",
 			//	tile.voltageStart[0], tile.voltageStop[0],
@@ -270,17 +270,19 @@ void testDiamondTiling(
 {
 	fprintf(stderr, "testing diamond tiling with %d timesteps tiling.\n", timesteps);
 
-	Tiles tilesX = computeDiamondTiles1D(numLines[0], blkSizes[0], 4);
-	Tiles tilesY = computeDiamondTiles1D(numLines[1], blkSizes[1], 4);
-	Tiles tilesZ = computeDiamondTiles1D(numLines[2], blkSizes[2], 4);
-	auto tilesPerThreadPerStage = combineTilesTo3D(tilesX, tilesY, tilesZ, 4, 4);
+	Tiles tilesX = computeDiamondTiles1D(numLines[0], blkSizes[0], timesteps * 2);
+	Tiles tilesY = computeDiamondTiles1D(numLines[1], blkSizes[1], timesteps * 2);
+	Tiles tilesZ = computeDiamondTiles1D(numLines[2], blkSizes[2], timesteps * 2);
+	auto tilesPerPhasePerThread = combineTilesTo3D(tilesX, tilesY, tilesZ, timesteps * 2, 4);
 
-	for (int t = 0; t < 30; t++) {
-		for (auto& tilesPerThread : tilesPerThreadPerStage) {
+	int totalPhases = tilesPerPhasePerThread[0].size();
+
+	for (int t = 0; t < 1; t++) {
+		for (int phase = 0; phase < totalPhases; phase++) {
 			for (int threadID = 0; threadID < 4; threadID++) {
 				/* shuffle thread to test out-of-order execution */
 				int threads[4] = {2, 4, 3, 1};
-				auto tiles = tilesPerThread[threads[threadID] - 1];
+				auto tiles = tilesPerPhasePerThread[threads[threadID] - 1][phase];
 
 				for (auto& tile : tiles) {
 					//fprintf(stderr, "UpdateVoltages (%d, %d) (%d, %d) (%d, %d)\n",
