@@ -720,6 +720,8 @@ std::vector<std::vector<Tiles3D>> combineTilesTo3D(
 		int phaseY = phaseXYZ[1];
 		int phaseZ = phaseXYZ[2];
 
+		bool nonEmpty = false;
+
 		for (int x = 0; x < tilesX.array[phaseX].size(); x++) {
 			for (int y = 0; y < tilesY.array[phaseY].size(); y++) {
 				for (int z = 0; z < tilesZ.array[phaseZ].size(); z++) {
@@ -755,18 +757,22 @@ std::vector<std::vector<Tiles3D>> combineTilesTo3D(
 						}
 						if (!omit) {
 							tilesPerPhasePerThread[assignedThread][phase].push_back(r);
+							nonEmpty = true;
 						}
 					}
-					if (parallelAxis == 'Z') {
+					if (parallelAxis == 'Z' && nonEmpty) {
 						assignedThread = (assignedThread + 1) % numThreads;
+						nonEmpty = false;
 					}
 				}
-				if (parallelAxis == 'Y') {
+				if (parallelAxis == 'Y' && nonEmpty) {
 					assignedThread = (assignedThread + 1) % numThreads;
+					nonEmpty = false;
 				}
 			}
-			if (parallelAxis == 'X') {
+			if (parallelAxis == 'X' && nonEmpty) {
 				assignedThread = (assignedThread + 1) % numThreads;
+				nonEmpty = false;
 			}
 		}
 
