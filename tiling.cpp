@@ -637,6 +637,8 @@ Tiles3D combineTilesTo3D(Tiles tilesX, Tiles tilesY, Tiles tilesZ, int blkHalfTi
 							for (int t = 0; t < blkHalfTimesteps; t += 2) {
 								Range3D r;
 
+								r.timestep = t / 2;
+
 								r.voltageStart[0] = tilesX.array[phaseX][x][t].first;
 								r.voltageStart[1] = tilesY.array[phaseY][y][t].first;
 								r.voltageStart[2] = tilesZ.array[phaseZ][z][t].first;
@@ -722,6 +724,8 @@ std::vector<std::vector<Tiles3D>> combineTilesTo3D(
 				for (int z = 0; z < tilesZ.array[phaseZ].size(); z++) {
 					for (int t = 0; t < blkHalfTimesteps; t += 2) {
 						Range3D r;
+
+						r.timestep = t / 2;
 
 						r.voltageStart[0] = tilesX.array[phaseX][x][t].first;
 						r.voltageStart[1] = tilesY.array[phaseY][y][t].first;
