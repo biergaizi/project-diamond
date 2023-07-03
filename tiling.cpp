@@ -1,4 +1,5 @@
 #include <cstdlib>
+#include <algorithm>
 #include "tiling.h"
 
 /*
@@ -788,6 +789,42 @@ std::vector<std::vector<Tiles3D>> combineTilesTo3D(
 			 * No need to do anything if phaseX overflows, since the outer
 			 * for loop will terminate when it reaches totalPhases.
 			 */
+		}
+	}
+
+	/*
+	 * Tiling may be applied to only selected dimension, for example,
+	 * X and Y but not Z. In this case, there will be phases that is
+	 * empty across all thread. Delete them to avoid synchronization
+	 * overhead.
+	 */
+	std::vector<int> emptyPhaseList;
+	for (int phase = 0; phase < totalPhases; phase++) {
+		int removePhase = true;
+
+		for (int thread = 0; thread < numThreads; thread++) {
+			if (tilesPerPhasePerThread[thread][phase].size() > 0) {
+				removePhase = false;
+			}
+		}
+
+		if (removePhase) {
+			emptyPhaseList.push_back(phase);
+		}
+	}
+
+	for (auto& tilesPerPhase : tilesPerPhasePerThread) {
+		int phase = 0;
+		int maxPhase = tilesPerPhase.size();
+		int idxPhase = 0;
+		while (phase < maxPhase) {
+			if (std::find(emptyPhaseList.begin(), emptyPhaseList.end(), phase) != emptyPhaseList.end()) {
+				tilesPerPhase.erase(tilesPerPhase.begin() + idxPhase);
+			}
+			else {
+				idxPhase++;
+			}
+			phase++;
 		}
 	}
 
