@@ -936,6 +936,20 @@ void traceDiamondTilesExecution(void)
 	traceTiles3D(tiles);
 }
 
+void showWorkPerThreads(std::vector<std::vector<Tiles3D>>& tilesPerStagePerThread)
+{
+	int thread = 0;
+
+	for (auto& tilesPerStage : tilesPerStagePerThread) {
+		fprintf(stderr, "thread %d: ", thread);
+		for (auto& tiles : tilesPerStage) {
+			fprintf(stderr, "%ld, ", tiles.size());
+		}
+		fprintf(stderr, "\n");
+		thread++;
+	}
+}
+
 int main(void)
 {
 	// Tiles tilesX = computeDiamondTiles1D(100, 10, 2);
