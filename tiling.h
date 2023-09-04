@@ -52,6 +52,7 @@ Tiles computeDiamondTiles1D(
 
 struct Range3D
 {
+	int timestep;
 	int voltageStart[3];
 	int voltageStop[3];
 	int currentStart[3];
