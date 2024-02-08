@@ -4,12 +4,16 @@ Project Diamond
 This repository contains experimental code for 3D FDTD domain decomposition
 using parallelogram and diamond tiling.
 
-The author is still in the process of trying to understand the tiling
-techniques, so the code in its current form is broken, incorrect, and
-ugly, so don't use it. After development is finished, I plan to write
-a blog post to explain how everything works, which should happen before
-the end of 2023, be patient. But if you still decide to read it, you're
-on your own.
+This is the first draft of the gode, so the code in its current form
+contains numerous problems, including broken, incorrect, misnamed,
+ugly concepts and code, so it's *not* recommend to make use of the
+code in its current form. The eventual plan is to rewrite it and
+integrate it into openEMS, a GPU version is also planned.
+
+For a detailed explanation on its theory of operation, please refer
+to the article [*Temporal Tiling: The Key to Fast FDTD Simulations, Explained*](https://github.com/thliebig/openEMS-Project/discussions/154#discussioncomment-8183199). To minimize wasted time, do not
+attempt to read the code unless you've read the article and the cited
+main paper.
 
 FDTD
 ---------
@@ -75,12 +79,3 @@ Note that implementation of algorithms can be copyrighted, but algorithms
 themselves cannot. Thus, if you simply read the code to understand how
 its algorithms work, then write your own implementation without copying
 any code, it's not covered by GPL.
-
-But seriously, don't do it for now.
-
-The author is still in the process of trying to understand the tiling
-techniques, so the code in its current form is broken, incorrect, and
-ugly, so don't use it. After development is finished, I plan to write
-a blog post to explain how everything works, which should happen before
-the end of 2023, be patient. But if you still decide to read it, you're
-on your own.
