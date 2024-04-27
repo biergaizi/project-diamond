@@ -56,9 +56,9 @@ int main(int argc, char** argv)
 		for (const Tile3D& tile : tileList) {
 			for (const Subtile3D& subtile : tile) {
 				std::array<size_t, 3> size = {
-					subtile.last[0] - subtile.first[0],
-					subtile.last[1] - subtile.first[1],
-					subtile.last[2] - subtile.first[2]
+					subtile.last[0] - subtile.first[0] + 1,
+					subtile.last[1] - subtile.first[1] + 1,
+					subtile.last[2] - subtile.first[2] + 1
 				};
 
 				if (map.find(size) == map.end()) {
