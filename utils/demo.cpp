@@ -164,7 +164,7 @@ Plan3D makePlan(size_t tileHalfTs)
 		Plan3D plan = combineTilesTTP(i, j, k);
 
 		printf("\ntiling for dimension k:\n");
-		visualizeTiles(k, gridSize[0], tileSize[0], tileHalfTs);
+		visualizeTiles(k, gridSize[2], tileSize[2], tileHalfTs);
 
 		return plan;
 	}
@@ -175,7 +175,7 @@ Plan3D makePlan(size_t tileHalfTs)
 		Plan3D plan = combineTilesTTT(i, j, k);
 
 		printf("\ntiling for dimension k:\n");
-		visualizeTiles(k, gridSize[0], tileSize[0], tileHalfTs);
+		visualizeTiles(k, gridSize[2], tileSize[2], tileHalfTs);
 
 		return plan;
 	}
