@@ -49,7 +49,7 @@ Tiling::computeParallelogramTiles(
 	// Split totalWidth into tiles, each is tileMinWidth long.
 	while (range.first <= totalWidth - 1) {
 		// create tile
-		Tile1D tile;
+		Tile1D tile(/* id= */ tileList.size());
 		tile.reserve(halfTimesteps);
 
 		// create 1st half timestep within tile
@@ -151,7 +151,7 @@ Tiling::computeTrapezoidTiles(
 
 	while (range.first <= totalWidth - 1) {
 		// create tile
-		Tile1D tile;
+		Tile1D tile(/* id= */ tileList.size());
 		tile.reserve(halfTimesteps);
 
 		// create 1st half timestep within tile
@@ -271,6 +271,7 @@ Tiling::combineTilesTTT(const Plan1D& i, const Plan1D& j, const Plan1D& k)
 	}
 
 	Plan3D plan(8);
+	size_t globalSubtileId = 0;
 
 	for (size_t stage = 0; stage < 8; stage++) {
 		// 3-to-8 decoder:
@@ -292,7 +293,9 @@ Tiling::combineTilesTTT(const Plan1D& i, const Plan1D& j, const Plan1D& k)
 						);
 					}
 						
-					Subtile3D subtile;
+					Subtile3D subtile(globalSubtileId);
+					globalSubtileId++;
+
 					for (size_t halfTs = 0; halfTs < tileI.size(); halfTs++) {
 						subtile.push_back(Range3D<size_t>{
 							{
@@ -308,7 +311,7 @@ Tiling::combineTilesTTT(const Plan1D& i, const Plan1D& j, const Plan1D& k)
 						});
 					}
 
-					Tile3D tile;
+					Tile3D tile({tileI.id(), tileJ.id(), tileK.id()});
 					tile.push_back(subtile);
 					tileListIJK.push_back(tile);
 				}
@@ -329,6 +332,7 @@ Tiling::combineTilesTTP(const Plan1D& i, const Plan1D& j, const Plan1D& k)
 	}
 
 	Plan3D plan(4);
+	size_t globalSubtileId = 0;
 
 	for (size_t stage = 0; stage < 4; stage++) {
 		// 2-to-4 decoder:
@@ -349,10 +353,11 @@ Tiling::combineTilesTTP(const Plan1D& i, const Plan1D& j, const Plan1D& k)
 		// as a whole to create a single 3D tile.
 		for (const Tile1D& tileI : tileListI) {
 			for (const Tile1D& tileJ : tileListJ) {
-				Tile3D tile;
+				Tile3D tile({tileI.id(), tileJ.id(), 0});
 
 				for (const Tile1D& tileK : tileListK) {
-					Subtile3D subtile;
+					Subtile3D subtile(globalSubtileId);
+					globalSubtileId++;
 
 					for (size_t halfTs = 0; halfTs < tileI.size(); halfTs++) {
 						if (tileI.size() != tileJ.size() ||

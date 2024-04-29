@@ -35,11 +35,11 @@ int main(int argc, char** argv)
 void dumpAllTiles(Plan3D plan)
 {
 	size_t stage = 0;
-	size_t tileId = 0;
 	for (const TileList3D& tileList : plan) {
 		printf("\n***********stage: %zu****************\n", stage);
 		for (const Tile3D& tile : tileList) {
-			printf("\t=============tileId: %zu=============\n", tileId);
+			printf("\t=============tileId: (%zu, %zu, %zu)=============\n",
+			       tile.id()[0], tile.id()[1], tile.id()[2]);
 			for (const Subtile3D& subtile : tile) {
 				printf("\t\t---(%zu, %zu, %zu) - (%zu, %zu, %zu)---\n",
 					   subtile.first[0], subtile.first[1], subtile.first[2],
@@ -53,7 +53,6 @@ void dumpAllTiles(Plan3D plan)
 				printf("\t\t---------------------------\n");
 			}
 			printf("\t===========================\n");
-			tileId++;
 		}
 		printf("***************************\n");
 		stage++;
