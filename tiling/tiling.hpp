@@ -137,7 +137,7 @@ namespace Tiling {
 }
 
 // hack: make it header-only for quick tests without build systems
-#ifndef TILING_NO_HACK
+#ifdef TILING_HEADER_ONLY
 #include "tiling.cpp"
 #endif
 

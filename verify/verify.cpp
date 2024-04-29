@@ -1,7 +1,9 @@
 #include <getopt.h>
 #include <format>
 #include "kernel.hpp"
+
 #include "tiling.hpp"
+using namespace Tiling;
 
 std::array<size_t, 3> gridSize = {SIZE_MAX, SIZE_MAX, SIZE_MAX};
 std::array<size_t, 3> tileSize = {SIZE_MAX, SIZE_MAX, SIZE_MAX};

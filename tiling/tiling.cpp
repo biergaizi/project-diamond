@@ -16,8 +16,9 @@
 #include <cassert>
 #include <iostream>
 
-#define TILING_NO_HACK
+#ifndef TILING_HEADER_ONLY
 #include "tiling.hpp"
+#endif
 using namespace Tiling;
 
 Plan1D

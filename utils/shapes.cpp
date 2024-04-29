@@ -8,7 +8,6 @@
 #include <unordered_map>
 #include <format>
 
-#define TILING_NO_HACK
 #include "tiling.hpp"
 using namespace Tiling;
 

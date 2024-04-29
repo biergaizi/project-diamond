@@ -6,7 +6,6 @@
 #include <format>
 #include <stdexcept>
 
-#define TILING_NO_HACK
 #include "tiling.hpp"
 using namespace Tiling;
 

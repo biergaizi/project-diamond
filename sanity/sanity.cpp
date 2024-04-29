@@ -5,7 +5,6 @@
 #include "array3d.hpp"
 #include "kernel.hpp"
 
-#define TILING_NO_HACK
 #include "tiling.hpp"
 using namespace Tiling;
 
