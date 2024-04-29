@@ -104,8 +104,8 @@ void parseArgs(int argc, char** argv)
 			   "in ASCII diagram\n\n", progname);
 		printf("Usage: %s [OPTION]\n", progname);
 		printf("   --grid-size\t\t-g\ti,j,k\t\t\t(e.g: 100,100,100)\n");
-		printf("   --tile-size\t\t-t\tip,jp,kp/kt\t\t"
-			   "(e.g: 20p,20p,20p or 10p,10p,10t)\n");
+		printf("   --tile-size\t\t-t\tit,jt,kt/kp\t\t"
+			   "(e.g: 20t,20t,20t or 10t,10t,10p)\n");
 		printf("   --tile-height\t-h\thalfTimesteps\t\t(e.g: 18)\n");
 		printf("   --dump\t\t-d\tdump plan for debugging\t(default: no)\n");
 		printf("\nNote: Parallelogram tiling uses suffix \"p\", "

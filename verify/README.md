@@ -29,7 +29,7 @@ Usage
     
     Usage: ./verify [OPTION]
        --grid-size		-g	i,j,k			(e.g: 400,400,400)
-       --tile-size		-t	ip,jp,kp/kt		(e.g: 20p,20p,20p or 20p,20p,20t)
+       --tile-size		-t	it,jt,kt/kp		(e.g: 20t,20t,20t or 20t,20t,20p)
        --tile-height	-h	halfTimesteps		(e.g: 18)
        --total-timesteps	-n	timesteps		(defafult: 100)
        --dump		-d	dump traces for debugging	(default: no)

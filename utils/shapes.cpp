@@ -136,8 +136,8 @@ void parseArgs(int argc, char** argv)
 		printf("%s: Show statistics of all unique tile shapes.\n\n", progname);
 		printf("Usage: %s [OPTION]\n", progname);
 		printf("   --grid-size\t\t-g\ti,j,k\t\t\t(e.g: 400,400,400)\n");
-		printf("   --tile-size\t\t-t\tip,jp,kp/kt\t\t"
-			   "(e.g: 20p,20p,20p or 20p,20p,20t)\n");
+		printf("   --tile-size\t\t-t\tit,jt,kt/kp\t\t"
+			   "(e.g: 20t,20t,20t or 20t,20t,20p)\n");
 		printf("   --tile-height\t-h\thalfTimesteps\t\t(e.g: 18)\n");
 		printf("\nNote: Parallelogram tiling uses suffix \"p\", "
 			   "trapezoid tiling uses suffix \"t\".\n");
