@@ -194,7 +194,7 @@ void updateCurrentRange(
 	for (size_t i = first[0]; i <= last[0]; i++) {
 		for (size_t j = first[1]; j <= last[1]; j++) {
 			for (size_t k = first[2]; k <= last[2]; k++) {
-				updateCurrentKernel(volt, curr, ii, iv, i, j, k);
+				updateCurrentKernel(curr, volt, ii, iv, i, j, k);
 			}
 		}
 	}
