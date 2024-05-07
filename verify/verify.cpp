@@ -254,8 +254,8 @@ int main(int argc, char** argv)
 
 	// then compare
 	bool success = true;
-	success |= compareSymbolicArrays(voltRef, voltTiled);
-	success |= compareSymbolicArrays(currRef, currTiled);
+	success &= compareSymbolicArrays(voltRef, voltTiled);
+	success &= compareSymbolicArrays(currRef, currTiled);
 
 	if (success) {
 		printf("verification passed.\n");
