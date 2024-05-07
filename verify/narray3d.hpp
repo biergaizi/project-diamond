@@ -55,9 +55,9 @@ public:
 		return m_ptr[idx];
 	}
 
-	size_t i() { return m_size[0]; }
-	size_t j() { return m_size[1]; }
-	size_t k() { return m_size[2]; }
+	size_t i() const { return m_size[0]; }
+	size_t j() const { return m_size[1]; }
+	size_t k() const { return m_size[2]; }
 	std::string name() { return m_name; };
 
 private:

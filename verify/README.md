@@ -22,6 +22,16 @@ timesteps is not required for verification, since when correct results are
 obtained by applying the tiling plan *once*, ideally it must also be true
 when the same tiling plan is applied multiple times.
 
+* To verify tiling as applied to the basic FDTD kernel, use `./verify`
+(recommended).
+
+* To verify tiling w/ SIMD kernel as applied to the SIMD FDTD kernel,
+use `./verify-simd`. Its command-line options are identical to `./verify`.
+Note that no actual SIMD computation is involved, it's an emulation using
+for loops. This is only used for verifying the correctness of a proposed
+alternative SIMD optimization to openEMS by the author, and is unrelated
+to tiling.
+
 Usage
 ---------
 

@@ -1,13 +1,18 @@
+#include <cmath>
 #include <getopt.h>
 #include <format>
+
+#include "simd.hpp"
 #include "kernel-scalar.hpp"
+#include "kernel-simd.hpp"
 
 #include "tiling.hpp"
 using namespace Tiling;
 
-std::array<size_t, 3> gridSize = {SIZE_MAX, SIZE_MAX, SIZE_MAX};
-std::array<size_t, 3> tileSize = {SIZE_MAX, SIZE_MAX, SIZE_MAX};
-std::array<char, 3>   tileType = {'-', '-', '-'};
+std::array<size_t, 3> gridSize     = {SIZE_MAX, SIZE_MAX, SIZE_MAX};
+std::array<size_t, 3> simdGridSize = {SIZE_MAX, SIZE_MAX, SIZE_MAX};
+std::array<size_t, 3> tileSize     = {SIZE_MAX, SIZE_MAX, SIZE_MAX};
+std::array<char, 3>   tileType     = {'-', '-', '-'};
 size_t tileHalfTs = SIZE_MAX;
 size_t timesteps = SIZE_MAX;
 bool debug = false;
@@ -17,13 +22,13 @@ void parseArgs(int argc, char** argv);
 void initializeSymbolicArrays(const char* name, NArray3D<GiNaC::ex>& array);
 
 void copySymbolicArrays(
-	NArray3D<GiNaC::ex>& arrayDst,
+	NArray3D<Simd<GiNaC::ex, 4>>& arrayDst,
 	NArray3D<GiNaC::ex>& arraySrc
 );
 
 bool compareSymbolicArrays(
 	NArray3D<GiNaC::ex>& arrayRef,
-	NArray3D<GiNaC::ex>& arrayTiled
+	NArray3D<Simd<GiNaC::ex, 4>>& arrayTiled
 );
 
 int main(int argc, char** argv);
@@ -40,22 +45,22 @@ void ref(
 Plan3D makePlan(size_t tileHalfTs);
 
 void tiled(
-	NArray3D<GiNaC::ex>& volt,
-	NArray3D<GiNaC::ex>& curr,
-	NArray3D<GiNaC::ex>& vv,
-	NArray3D<GiNaC::ex>& vi,
-	NArray3D<GiNaC::ex>& ii,
-	NArray3D<GiNaC::ex>& iv
+	NArray3D<Simd<GiNaC::ex, 4>>& volt,
+	NArray3D<Simd<GiNaC::ex, 4>>& curr,
+	NArray3D<Simd<GiNaC::ex, 4>>& vv,
+	NArray3D<Simd<GiNaC::ex, 4>>& vi,
+	NArray3D<Simd<GiNaC::ex, 4>>& ii,
+	NArray3D<Simd<GiNaC::ex, 4>>& iv
 );
 
 void tiledBody(
 	Plan3D plan,
-	NArray3D<GiNaC::ex>& volt,
-	NArray3D<GiNaC::ex>& curr,
-	NArray3D<GiNaC::ex>& vv,
-	NArray3D<GiNaC::ex>& vi,
-	NArray3D<GiNaC::ex>& ii,
-	NArray3D<GiNaC::ex>& iv
+	NArray3D<Simd<GiNaC::ex, 4>>& volt,
+	NArray3D<Simd<GiNaC::ex, 4>>& curr,
+	NArray3D<Simd<GiNaC::ex, 4>>& vv,
+	NArray3D<Simd<GiNaC::ex, 4>>& vi,
+	NArray3D<Simd<GiNaC::ex, 4>>& ii,
+	NArray3D<Simd<GiNaC::ex, 4>>& iv
 );
 
 void parseArgs(int argc, char** argv)
@@ -149,6 +154,10 @@ void parseArgs(int argc, char** argv)
 			"dimension i and j only support trapezoid tiling (suffix t)"
 		);
 	}
+
+	simdGridSize[0] = gridSize[0];
+	simdGridSize[1] = gridSize[1];
+	simdGridSize[2] = (size_t) std::ceil((double) gridSize[2] / 4);
 }
 
 void initializeSymbolicArrays(NArray3D<GiNaC::ex>& array)
@@ -169,7 +178,7 @@ void initializeSymbolicArrays(NArray3D<GiNaC::ex>& array)
 }
 
 void copySymbolicArrays(
-	NArray3D<GiNaC::ex>& arrayDst,
+	NArray3D<Simd<GiNaC::ex, 4>>& arrayDst,
 	NArray3D<GiNaC::ex>& arraySrc
 )
 {
@@ -177,7 +186,10 @@ void copySymbolicArrays(
 		for (size_t i = 0; i < gridSize[0]; i++) {
 			for (size_t j = 0; j < gridSize[1]; j++) {
 				for (size_t k = 0; k < gridSize[2]; k++) {
-					arrayDst(i, j, k, n) = arraySrc(i, j, k, n);
+					size_t vk = k / 4;
+					size_t offset = k % 4;
+
+					arrayDst(i, j, vk, n).elem[offset] = arraySrc(i, j, k, n);
 				}
 			}
 		}
@@ -186,18 +198,24 @@ void copySymbolicArrays(
 
 bool compareSymbolicArrays(
 	NArray3D<GiNaC::ex>& arrayRef,
-	NArray3D<GiNaC::ex>& arrayTiled
+	NArray3D<Simd<GiNaC::ex, 4>>& arrayTiled
 )
 {
 	for (size_t n = 0; n < 3; n++) {
 		for (size_t i = 0; i < gridSize[0]; i++) {
 			for (size_t j = 0; j < gridSize[1]; j++) {
 				for (size_t k = 0; k < gridSize[2]; k++) {
-					if (arrayTiled(i, j, k, n) != arrayRef(i, j, k, n)) {
+					size_t vk = k / 4;
+					size_t offset = k % 4;
+
+					GiNaC::ex refVal = arrayRef(i, j, k, n);
+					GiNaC::ex tiledVal = arrayTiled(i, j, vk, n).elem[offset];
+
+					if (refVal != tiledVal) {
 						std::stringstream arrayTiledString, arrayRefString;
 
-						arrayTiledString << arrayTiled(i, j, k, n);
-						arrayRefString << arrayRef(i, j, k, n);
+						arrayTiledString << tiledVal;
+						arrayRefString << refVal;
 
 						std::cerr << std::format(
 							"{}(i={},j={},k={},n={}) verification failed!\n\n"
@@ -226,31 +244,39 @@ int main(int argc, char** argv)
 		   tileSize[0], tileSize[1], tileSize[2]);
 	printf("timesteps\t"  "%zu\n", timesteps);
 
-	// common operator arrays, expected to be read-only
-	auto vv = NArray3D<GiNaC::ex>("vv", gridSize);
-	auto vi = NArray3D<GiNaC::ex>("vi", gridSize);
-	auto ii = NArray3D<GiNaC::ex>("ii", gridSize);
-	auto iv = NArray3D<GiNaC::ex>("iv", gridSize);
-
-	initializeSymbolicArrays(vv);
-	initializeSymbolicArrays(vi);
-	initializeSymbolicArrays(ii);
-	initializeSymbolicArrays(iv);
-
-	// reference field and tiled field arrays
+	// reference arrays
 	auto voltRef = NArray3D<GiNaC::ex>("volt", gridSize);
 	auto currRef = NArray3D<GiNaC::ex>("curr", gridSize);
+	auto vvRef = NArray3D<GiNaC::ex>("vv", gridSize);
+	auto viRef = NArray3D<GiNaC::ex>("vi", gridSize);
+	auto iiRef = NArray3D<GiNaC::ex>("ii", gridSize);
+	auto ivRef = NArray3D<GiNaC::ex>("iv", gridSize);
+
 	initializeSymbolicArrays(voltRef);
 	initializeSymbolicArrays(currRef);
+	initializeSymbolicArrays(vvRef);
+	initializeSymbolicArrays(viRef);
+	initializeSymbolicArrays(iiRef);
+	initializeSymbolicArrays(ivRef);
 
-	auto voltTiled = NArray3D<GiNaC::ex>("volt", gridSize);
-	auto currTiled = NArray3D<GiNaC::ex>("curr", gridSize);
+	// tiled arrays
+	auto voltTiled = NArray3D<Simd<GiNaC::ex, 4>>("volt", simdGridSize);
+	auto currTiled = NArray3D<Simd<GiNaC::ex, 4>>("curr", simdGridSize);
+	auto vvTiled = NArray3D<Simd<GiNaC::ex, 4>>("vv", simdGridSize);
+	auto viTiled = NArray3D<Simd<GiNaC::ex, 4>>("vi", simdGridSize);
+	auto iiTiled = NArray3D<Simd<GiNaC::ex, 4>>("ii", simdGridSize);
+	auto ivTiled = NArray3D<Simd<GiNaC::ex, 4>>("iv", simdGridSize);
+
 	copySymbolicArrays(voltTiled, voltRef);
 	copySymbolicArrays(currTiled, currRef);
+	copySymbolicArrays(vvTiled, vvRef);
+	copySymbolicArrays(viTiled, viRef);
+	copySymbolicArrays(iiTiled, iiRef);
+	copySymbolicArrays(ivTiled, ivRef);
 
 	// calculate reference and tiled values
-	ref(voltRef, currRef, vv, vi, ii, iv);
-	tiled(voltTiled, currTiled, vv, vi, ii, iv);
+	ref(voltRef, currRef, vvRef, viRef, iiRef, ivRef);
+	tiled(voltTiled, currTiled, vvTiled, viTiled, iiTiled, ivTiled);
 
 	// then compare
 	bool success = true;
@@ -286,11 +312,13 @@ void ref(
 			gridSize[0] - 2, gridSize[1] - 2, gridSize[2] - 2
 		};
 
+		#if 0
 		updateVoltageRange(
 			volt, curr, vv, vi,
 			rangeFirst, voltRangeLast,
 			debug
 		);
+		#endif
 
 		updateCurrentRange(
 			curr, volt, ii, iv,
@@ -328,12 +356,12 @@ Plan3D makePlan(size_t tileHalfTs)
 }
 
 void tiled(
-	NArray3D<GiNaC::ex>& volt,
-	NArray3D<GiNaC::ex>& curr,
-	NArray3D<GiNaC::ex>& vv,
-	NArray3D<GiNaC::ex>& vi,
-	NArray3D<GiNaC::ex>& ii,
-	NArray3D<GiNaC::ex>& iv
+	NArray3D<Simd<GiNaC::ex, 4>>& volt,
+	NArray3D<Simd<GiNaC::ex, 4>>& curr,
+	NArray3D<Simd<GiNaC::ex, 4>>& vv,
+	NArray3D<Simd<GiNaC::ex, 4>>& vi,
+	NArray3D<Simd<GiNaC::ex, 4>>& ii,
+	NArray3D<Simd<GiNaC::ex, 4>>& iv
 )
 {
 	std::cout << "generating tiled results...\n";
@@ -365,12 +393,12 @@ void tiled(
 
 void tiledBody(
 	Plan3D plan,
-	NArray3D<GiNaC::ex>& volt,
-	NArray3D<GiNaC::ex>& curr,
-	NArray3D<GiNaC::ex>& vv,
-	NArray3D<GiNaC::ex>& vi,
-	NArray3D<GiNaC::ex>& ii,
-	NArray3D<GiNaC::ex>& iv
+	NArray3D<Simd<GiNaC::ex, 4>>& volt,
+	NArray3D<Simd<GiNaC::ex, 4>>& curr,
+	NArray3D<Simd<GiNaC::ex, 4>>& vv,
+	NArray3D<Simd<GiNaC::ex, 4>>& vi,
+	NArray3D<Simd<GiNaC::ex, 4>>& ii,
+	NArray3D<Simd<GiNaC::ex, 4>>& iv
 )
 {
 	size_t stage = 0;
@@ -384,11 +412,13 @@ void tiledBody(
 					const Range3D<size_t>& voltRange = subtile[halfTs];
 					const Range3D<size_t>& currRange = subtile[halfTs + 1];
 
+					#if 0
 					updateVoltageRange(
 						volt, curr, vv, vi,
 						voltRange.first, voltRange.last,
 						debug
 					);
+					#endif
 
 					updateCurrentRange(
 						curr, volt, ii, iv,
