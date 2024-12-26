@@ -153,7 +153,7 @@ Plan3D makePlan(size_t tileHalfTs)
 	visualizeTiles(i, gridSize[0], tileSize[0], tileHalfTs);
 
 	printf("\ntiling for dimension j:\n");
-	visualizeTiles(j, gridSize[0], tileSize[0], tileHalfTs);
+	visualizeTiles(j, gridSize[1], tileSize[1], tileHalfTs);
 
 	if (tileType[2] == 'p') {
 		Plan1D k = computeParallelogramTiles(
